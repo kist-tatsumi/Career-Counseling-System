@@ -8,7 +8,7 @@
 <body>
 <div class="container">
     <h2>進路希望調査フォーム</h2>
-    <form action="save_survey.php" method="post">
+    <form action="save_survey.php" method="POST">
         <div class="form-group">
             <label>学籍番号</label>
             <input type="text" name="student_id" required>

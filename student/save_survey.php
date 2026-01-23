@@ -1,5 +1,5 @@
 <?php
-require_once 'config.php'; // データベース接続を読み込み
+require_once '../config.php'; // 修正: 親ディレクトリのconfig.phpを読み込む
 
 $success = false;
 $error_msg = "";
@@ -27,8 +27,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="style.css">
-    <title>送信結果 - 進路希望調査</title>
+    <link rel="stylesheet" href="../style.css"> <title>送信結果 - 進路希望調査</title>
 </head>
 <body>
     <div class="container">
@@ -39,7 +38,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <h2>エラーが発生しました</h2>
             <p><?php echo htmlspecialchars($error_msg); ?></p>
         <?php endif; ?>
-        <a href="index.html" class="back-link">トップメニューへ戻る</a>
+        <a href="index.html" class="btn">トップメニューへ戻る</a>
     </div>
 </body>
 </html>
