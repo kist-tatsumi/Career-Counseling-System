@@ -1,0 +1,48 @@
+-- 1. 進路希望調査票テーブル
+CREATE TABLE IF NOT EXISTS career_surveys (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id VARCHAR(20) NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    first_choice VARCHAR(100),
+    second_choice VARCHAR(100),
+    third_choice VARCHAR(100),
+    consultation TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. 模擬面接予約テーブル
+CREATE TABLE IF NOT EXISTS interviews (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id VARCHAR(20) NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    appointment_date DATE NOT NULL,
+    pref_teacher_1 VARCHAR(50),
+    pref_teacher_2 VARCHAR(50),
+    pref_teacher_3 VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. 進路相談・面談予約テーブル (AIマッチング & 第3希望日対応版)
+CREATE TABLE IF NOT EXISTS consultations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id VARCHAR(20) NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    appointment_date DATE NOT NULL,          -- 第1希望
+    appointment_date_2 DATE NULL,           -- 第2希望
+    appointment_date_3 DATE NULL,           -- 第3希望
+    teacher_name VARCHAR(50),               -- 生徒が選択した（または指定なしの）先生
+    content TEXT,                           -- 相談内容
+    ai_recommendation TEXT,                 -- Gemini AIによるマッチング・アドバイス結果
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4. 教員のスケジュール（空き時間）管理テーブル
+CREATE TABLE IF NOT EXISTS teacher_availability (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    teacher_id VARCHAR(20) NOT NULL,        -- 教員を識別するID（例: T001）
+    day_of_week VARCHAR(10) NOT NULL,       -- 曜日
+    time_slot VARCHAR(10) NOT NULL,         -- 午前(AM) / 午後(PM)
+    is_available BOOLEAN DEFAULT FALSE,     -- 空き状況（TRUE=空き, FALSE=休み）
+    UNIQUE KEY unique_slot (teacher_id, day_of_week, time_slot)
+);

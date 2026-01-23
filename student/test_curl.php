@@ -1,0 +1,1 @@
+<?php echo function_exists('curl_init') ? 'cURLは有効です' : 'cURLが無効です。php.iniの設定が必要です'; ?>
