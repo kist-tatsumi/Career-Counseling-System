@@ -1,14 +1,32 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head><meta charset="UTF-8"><link rel="stylesheet" href="../style.css"><title>教員メニュー</title></head>
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../style.css">
+    <title>教員用メニュー</title>
+</head>
 <body>
 <div class="container">
-    <h2>教員用管理パネル</h2>
+    <h1>教員用ポータル</h1>
+    
     <div class="menu-container">
-        <a href="admin_view.php" class="card"><h2>回答一覧</h2></a>
-        <a href="teacher_availability.php" class="card"><h2>スケジュール設定</h2></a>
+        <a href="admin_view.php" class="card">
+            <h2>予約一覧確認</h2>
+            <p>生徒からの相談・面談予約と<br>AI診断結果を確認します</p>
+        </a>
+        <a href="auto_matching.php" class="card">
+            <h2>自動マッチング集計</h2>
+            <p>生徒の希望とシフトを照合し<br>最適な割り当てを計算します</p>
+        </a>
+        <a href="teacher_availability.php" class="card">
+            <h2>担当スケジュール登録</h2>
+            <p>面談可能な日時（シフト）を<br>登録・更新します</p>
+        </a>
     </div>
-    <a href="../index.html" class="btn">総合トップへ戻る</a>
+
+    <div class="back-link">
+        <a href="../index.html" class="btn">総合トップへ戻る</a>
+    </div>
 </div>
 </body>
 </html>

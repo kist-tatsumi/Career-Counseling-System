@@ -1,39 +1,74 @@
 <?php 
 require_once '../config.php';
 
-// 教員の選択（GETパラメータで切り替え、デフォルトはA先生）
+// --- 設定値の取得 ---
 $teacher = isset($_GET['teacher']) ? $_GET['teacher'] : "A先生";
 $teacher_list = ["A先生", "B先生", "C先生"];
+// 週のオフセット（0=今週, 1=来週...）
+$week_offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
 
-// POST送信時の処理（スケジュール保存）
+// --- 日付計算ロジック ---
+// 今週の月曜日を基準にする
+$this_monday = strtotime("monday this week");
+// 選択された週の月曜日
+$target_monday = strtotime("+$week_offset week", $this_monday);
+// 表示対象の5日間（月〜金）の日付配列を作成
+$target_dates = [];
+for ($i = 0; $i < 5; $i++) {
+    $target_dates[] = date('Y-m-d', strtotime("+$i day", $target_monday));
+}
+
+$message = "";
+
+// --- 保存処理 ---
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // フォームから送信された教員名を使用（セキュリティのため検証リストと比較）
     $posted_teacher = $_POST['teacher_name'];
+    
+    // セキュリティチェック
     if (in_array($posted_teacher, $teacher_list)) {
-        $teacher = $posted_teacher; // 表示用の変数も更新
+        $teacher = $posted_teacher;
         
-        foreach (['月', '火', '水', '木', '金'] as $day) {
-            $am = isset($_POST["am_$day"]) ? 1 : 0;
-            $pm = isset($_POST["pm_$day"]) ? 1 : 0;
+        // 「向こう4週間分まとめて登録」チェックボックス
+        $bulk_update = isset($_POST['bulk_update']) ? true : false;
+        $weeks_to_process = $bulk_update ? 4 : 1; // 1週間分か、4週間分か
+
+        // 週間ループ
+        for ($w = 0; $w < $weeks_to_process; $w++) {
+            // このループで処理する週の月曜日
+            $current_base_monday = strtotime("+$w week", $target_monday);
             
-            // setup.sql で定義した teacher_schedules テーブルを使用
-            $stmt = $dbh->prepare("INSERT INTO teacher_schedules (teacher_name, day_of_week, am_available, pm_available) 
-                                   VALUES (?, ?, ?, ?) 
-                                   ON DUPLICATE KEY UPDATE am_available=?, pm_available=?");
-            $stmt->execute([$teacher, $day, $am, $pm, $am, $pm]);
+            // 月〜金の5日間を処理
+            for ($d = 0; $d < 5; $d++) {
+                // 処理対象の日付 (YYYY-MM-DD)
+                $date_str = date('Y-m-d', strtotime("+$d day", $current_base_monday));
+                // フォームのキー名 (例: am_0, am_1...) 
+                // ※一括登録時は「元のフォームの入力値(0〜4)」をそのまま全週に適用する
+                $am = isset($_POST["am_$d"]) ? 1 : 0;
+                $pm = isset($_POST["pm_$d"]) ? 1 : 0;
+
+                $stmt = $dbh->prepare("INSERT INTO teacher_schedules (teacher_name, schedule_date, am_available, pm_available) 
+                                       VALUES (?, ?, ?, ?) 
+                                       ON DUPLICATE KEY UPDATE am_available=?, pm_available=?");
+                $stmt->execute([$teacher, $date_str, $am, $pm, $am, $pm]);
+            }
         }
-        $message = "{$teacher} のスケジュールを更新しました。";
-    } else {
-        $error = "不正な教員名です。";
+        
+        $message = $bulk_update 
+            ? "{$teacher}のスケジュールを4週間分まとめて更新しました。" 
+            : "スケジュールを更新しました。";
     }
 }
 
-// 現在のデータを取得（チェック状態を復元）
+// --- 現在のデータを取得 ---
+// 表示対象の週のデータをDBから引く
 $current_data = [];
-$res = $dbh->prepare("SELECT * FROM teacher_schedules WHERE teacher_name = ?");
-$res->execute([$teacher]);
-while($row = $res->fetch()){
-    $current_data[$row['day_of_week']] = $row;
+$placeholders = implode(',', array_fill(0, count($target_dates), '?'));
+$sql = "SELECT * FROM teacher_schedules WHERE teacher_name = ? AND schedule_date IN ($placeholders)";
+$stmt = $dbh->prepare($sql);
+$stmt->execute(array_merge([$teacher], $target_dates));
+
+while($row = $stmt->fetch()){
+    $current_data[$row['schedule_date']] = $row;
 }
 ?>
 <!DOCTYPE html>
@@ -41,48 +76,63 @@ while($row = $res->fetch()){
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="../style.css">
-    <title>予定設定</title>
+    <title>スケジュール設定</title>
+    <style>
+        .week-nav { display: flex; justify-content: center; align-items: center; gap: 20px; margin: 20px 0; }
+        .week-nav a { text-decoration: none; font-weight: bold; color: #3498db; font-size: 1.2rem; }
+        .week-nav span { font-size: 1.1rem; font-weight: bold; }
+        .bulk-option { background: #fff3cd; padding: 10px; border-radius: 6px; text-align: center; margin-top: 15px; border: 1px solid #ffeeba; }
+    </style>
 </head>
 <body>
 <div class="container" style="background: #f8f9fa;">
     <h2>教員スケジュール設定</h2>
     
-    <div style="text-align:center; margin-bottom:20px;">
-        <label>設定する教員を選択：</label>
-        <select onchange="location.href='?teacher='+this.value" style="width:auto; display:inline-block;">
+    <div style="text-align:center;">
+        <select onchange="location.href='?teacher='+this.value+'&offset=<?= $week_offset ?>'" style="width:auto; display:inline-block;">
             <?php foreach($teacher_list as $t): ?>
                 <option value="<?= $t ?>" <?= $teacher === $t ? 'selected' : '' ?>><?= $t ?></option>
             <?php endforeach; ?>
         </select>
     </div>
 
-    <h3 style="text-align:center; border:none;"><?= htmlspecialchars($teacher) ?> の勤務設定</h3>
-    
-    <?php if(isset($message)) echo "<p style='color:green; text-align:center; font-weight:bold;'>$message</p>"; ?>
-    <?php if(isset($error)) echo "<p style='color:red; text-align:center;'>$error</p>"; ?>
+    <?php if($message) echo "<p style='color:green; text-align:center; font-weight:bold; margin-top:10px;'>$message</p>"; ?>
+
+    <div class="week-nav">
+        <a href="?teacher=<?= $teacher ?>&offset=<?= $week_offset - 1 ?>">« 前の週</a>
+        <span><?= date('Y年n月j日', $target_monday) ?> の週</span>
+        <a href="?teacher=<?= $teacher ?>&offset=<?= $week_offset + 1 ?>">次の週 »</a>
+    </div>
 
     <form method="post">
         <input type="hidden" name="teacher_name" value="<?= htmlspecialchars($teacher) ?>">
+        
         <table class="availability-table">
             <thead>
-                <tr><th>曜日</th><th>午前 (9:00-12:00)</th><th>午後 (13:00-17:00)</th></tr>
+                <tr><th>日付</th><th>午前 (9:00-12:00)</th><th>午後 (13:00-17:00)</th></tr>
             </thead>
             <tbody>
-                <?php foreach (['月', '火', '水', '木', '金'] as $day): 
-                    $am_check = (isset($current_data[$day]) && $current_data[$day]['am_available']) ? "checked" : "";
-                    $pm_check = (isset($current_data[$day]) && $current_data[$day]['pm_available']) ? "checked" : "";
+                <?php 
+                $weekdays = ['月', '火', '水', '木', '金'];
+                foreach ($target_dates as $index => $date): 
+                    $day_label = $weekdays[$index];
+                    // DBにデータがあればチェック状態にする
+                    $am_check = (isset($current_data[$date]) && $current_data[$date]['am_available']) ? "checked" : "";
+                    $pm_check = (isset($current_data[$date]) && $current_data[$date]['pm_available']) ? "checked" : "";
                 ?>
                 <tr>
-                    <td><?= $day ?>曜</td>
+                    <td>
+                        <?= date('n/j', strtotime($date)) ?> (<?= $day_label ?>)
+                    </td>
                     <td>
                         <label class="check-container">
-                            <input type="checkbox" name="am_<?= $day ?>" <?= $am_check ?>>
+                            <input type="checkbox" name="am_<?= $index ?>" <?= $am_check ?>>
                             <span class="checkmark-label"></span>
                         </label>
                     </td>
                     <td>
                         <label class="check-container">
-                            <input type="checkbox" name="pm_<?= $day ?>" <?= $pm_check ?>>
+                            <input type="checkbox" name="pm_<?= $index ?>" <?= $pm_check ?>>
                             <span class="checkmark-label"></span>
                         </label>
                     </td>
@@ -90,8 +140,18 @@ while($row = $res->fetch()){
                 <?php endforeach; ?>
             </tbody>
         </table>
-        <button type="submit" style="margin-top: 20px; background-color: #2c3e50;">スケジュールを保存する</button>
+
+        <div class="bulk-option">
+            <label>
+                <input type="checkbox" name="bulk_update" value="1">
+                <strong>このパターンを「向こう4週間分」まとめて登録する</strong>
+            </label>
+            <p style="font-size:0.85rem; margin:5px 0 0; color:#666;">※チェックを入れると、表示中の週と同じ設定が4週間後までコピーされます。</p>
+        </div>
+
+        <button type="submit" style="margin-top: 20px; background-color: #2c3e50;">保存する</button>
     </form>
+    
     <div style="text-align: center;">
         <a href="index.html" class="btn">管理メニューに戻る</a>
     </div>
