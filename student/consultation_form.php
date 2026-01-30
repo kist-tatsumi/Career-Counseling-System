@@ -52,7 +52,9 @@
             </div>
             <button type="submit">AIマッチングを開始して予約する</button>
         </form>
-        <a href="index.html" class="back-link">メニューに戻る</a>
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="index.html" class="btn">トップメニューに戻る</a>
+        </div>
     </div>
 </body>
 </html>
