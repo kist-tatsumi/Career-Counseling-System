@@ -6,7 +6,7 @@ $user = 'root';
 $pass = 'root';
 
 // Google Gemini APIキー設定
-define('GEMINI_API_KEY', 'AIzaSyAKngdDLUTr5N2jtTIyQ0gQmvSEuHQRQdM');
+define('GEMINI_API_KEY', 'ここにあなたのAPIキーを入力してください');
 
 try {
     $dbh = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $user, $pass);
